@@ -1,8 +1,15 @@
 // ==UserScript==
+<<<<<<< HEAD:pa1/cs255-facebook-encryption.user.js
 // @namespace      CS255-Lastname1-Lastname2
 // @name           CS255-Lastname1-Lastname2
 // @description    CS255-Lastname1-Lastname2 - CS255 Assignment 1
 // @version        1.4
+=======
+// @namespace      CS255-Chyan-Charoensripongsa
+// @name           CS255-Chyan-Charoensripongsa
+// @description    CS255-Chyan-Charoensripongsa - CS255 Assignment 1
+// @version        1.2
+>>>>>>> e82b31eb411d66f864732f04d7d7401a469d26fd:pa1/CS255-Chyan-Charoensripongsa.user.js
 //
 // 
 // @include        http://www.facebook.com/*
