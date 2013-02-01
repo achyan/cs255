@@ -54,12 +54,20 @@ function Encrypt(plainText, group) {
         bits = bits.concat([0]);
       }
     }
-    
+    var iv = GetRandomValues(4);    
     var encryptedArray = [];
     for(var i = 0; i < bits.length/4; i++){
       var index = i * 4;
       var block = [bits[index], bits[index+1], bits[index+2], bits[index+3]];
-      var ctext = cipher.encrypt(block);     
+      
+
+      for(var j = 0; j < 4; j++){
+        block[j] ^= iv[j];
+      }
+      
+      var ctext = cipher.encrypt(block); 
+      iv = ctext;
+      
       console.log(cipher.decrypt(ctext));
       encryptedArray = encryptedArray.concat(ctext);
     }
