@@ -30,14 +30,8 @@ var keys = {}; // association map of keys: group -> key
 // Some initialization functions are called at the very end of this script.
 // You only have to edit the top portion.
 
-function xorArray(x, y){
-  if(x.length != y.length) return null;
-
-  var z = [];
-  for(var j = 0; j < x.length; j++){
-    z = z.concat(x[j] ^ y[j]);
-  }
-  return z;
+function xor4(x, y) {
+    return [x[0] ^ y[0], x[1] ^ y[1], x[2] ^ y[2], x[3] ^ y[3]];
 }
 
 // Return the encryption of the message for the given group, in the form of a string.
@@ -53,7 +47,7 @@ function Encrypt(plainText, group) {
     alert("Try entering a message (the button works only once)");
     return plainText;
   } else {
-    //128, 192, 256
+    //128, 192, 256 bits
     var key = new Array(8); 
     var cipher = new sjcl.cipher.aes(key);    
     var len = plainText.length;
@@ -71,13 +65,10 @@ function Encrypt(plainText, group) {
     encryptedArray = encryptedArray.concat(iv);
     for(var i = 0; i < bits.length/4; i++){
       var index = i * 4;
-      var block = [bits[index], bits[index+1], bits[index+2], bits[index+3]];
-      
-      block = xorArray(block, iv);
-      
+      var block = [bits[index], bits[index+1], bits[index+2], bits[index+3]];      
+      block = xor4(block, iv);      
       var ctext = cipher.encrypt(block); 
-      iv = ctext;
-      
+      iv = ctext;      
       console.log(cipher.decrypt(ctext));
       encryptedArray = encryptedArray.concat(ctext);
     }
@@ -112,7 +103,7 @@ function Decrypt(cipherText, group) {
       var block = [intArray[index], intArray[index+1], intArray[index+2], intArray[index+3]];
       var decryptedMsg = cipher.decrypt(block);
       
-      decryptedMsg = xorArray(decryptedMsg, xorer);      
+      decryptedMsg = xor4(decryptedMsg, xorer);      
       xorer = block;
       var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
       resultStr += decryptStr;
