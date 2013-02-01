@@ -131,18 +131,57 @@ function SaveKeys() {
   // CS255-todo: plaintext keys going to disk?
   var key_str = JSON.stringify(keys);
 
-  localStorage.setItem('facebook-keys-' + my_username, encodeURIComponent(key_str));
+  cs255.localStorage.setItem('facebook-keys-' + my_username, encodeURIComponent(key_str));
 }
 
 // Load the group keys from disk.
 function LoadKeys() {
   keys = {}; // Reset the keys.
-  var saved = localStorage.getItem('facebook-keys-' + my_username);
-  if (saved) {
-    var key_str = decodeURIComponent(saved);
-    // CS255-todo: plaintext keys were on disk?
-    keys = JSON.parse(key_str);
+  debugger;
+  var db_pwd = sessionStorage.getItem('fb-db-pass-'+ my_username);
+  if(!db_pwd) {
+    var db_pwd_pt = prompt('Enter new db password:');
+    var ver_salt = GetRandomValues(4);
+    var decrypt_salt = GetRandomValues(4);
+    sessionStorage.setItem('fb-db-pass-' + my_username, sjcl.misc.pbkdf2(db_pwd_pt,ver_salt, null, 128));
+    cs255.localStorage.setItem('fb-db-pass-' + my_username, sjcl.misc.pbkdf2(db_pwd_pt,ver_salt, null, 128));
+    cs255.localStorage.setItem('fb-db-ver-salt-' + my_username, ver_salt);
+    cs255.localStorage.setItem('fb-db-dec-salt-' + my_username, decrypt_salt);
   }
+  else {
+    var stored_pwd = sessionStorage.getItem('fb-db-pass-' + my_username);
+    var ver_salt = cs255.localStorage.getItem('fb-db-ver-salt-' + my_username);
+
+    for (var i = 0; i < 3; i++) {
+      var pwd_input = prompt('Enter db password:');
+      if ( sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128) == stored_pwd ) {
+        var dec_salt = cs255.localStorage.getItem('fb-db-dec-salt' + my_username);
+        var saved = cs255.localStorage.getItem('facebook-keys-' + my_username);
+        if (saved) {
+          var key_str = decodeURIComponent(saved);
+          // CS255-todo: plaintext keys were on disk?
+          keys = JSON.parse(key_str);
+          var db_key = new sjcl.cipher.aes(sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128));
+
+
+    /*var cipher = 
+    var dumbtext = new Array(4);
+    dumbtext[0] = 1; dumbtext[1] = 2; dumbtext[2] = 3; dumbtext[3] = 4;
+    var ctext = cipher.encrypt(dumbtext);
+    var outtext = cipher.decrypt(ctext);
+          for (key in keys) {
+            keys[key] = 
+          }*/
+        }
+        break;
+      }
+    }
+    
+
+
+  }
+
+
 }
 
 /////////////////////////////////////////////////////////
@@ -196,6 +235,37 @@ function LoadKeys() {
 //
 /////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
+
+var cs255 = {
+  localStorage: {
+    setItem: function(key, value) {
+      localStorage.setItem(key, value);
+      var newEntries = {};
+      newEntries[key] = value;
+      chrome.storage.local.set(newEntries);
+    },
+    getItem: function(key) {
+      return localStorage.getItem(key);
+    },
+    clear: function() {
+      chrome.storage.local.clear();
+    }
+  }
+}
+
+if (typeof chrome.storage === "undefined") {
+  var id = function() {};
+  chrome.storage = {local: {get: id, set: id}};
+}
+else {
+  // See if there are any values stored with the extension.
+  chrome.storage.local.get(null, function(onDisk) {
+    for (key in onDisk) {
+      localStorage.setItem(key, onDisk[key]);
+    }
+  });
+}
+
 
 // Get n 32-bit-integers entropy as an array. Defaults to 1 word
 function GetRandomValues(n) {
