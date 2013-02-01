@@ -30,6 +30,16 @@ var keys = {}; // association map of keys: group -> key
 // Some initialization functions are called at the very end of this script.
 // You only have to edit the top portion.
 
+function xorArray(x, y){
+  if(x.length != y.length) return null;
+
+  var z = [];
+  for(var j = 0; j < x.length; j++){
+    z = z.concat(x[j] ^ y[j]);
+  }
+  return z;
+}
+
 // Return the encryption of the message for the given group, in the form of a string.
 //
 // @param {String} plainText String to encrypt.
@@ -43,12 +53,13 @@ function Encrypt(plainText, group) {
     alert("Try entering a message (the button works only once)");
     return plainText;
   } else {
-    var key = new Array(8); // = LoadKeys();    
+    //128, 192, 256
+    var key = new Array(8); 
     var cipher = new sjcl.cipher.aes(key);    
     var len = plainText.length;
     var bits = sjcl.codec.utf8String.toBits(plainText);
 
-    // padding
+    // pad with 0
     if(bits.length % 4 != 0){    
       for(var zeros = 4 - bits.length % 4; zeros > 0; zeros--){
         bits = bits.concat([0]);
@@ -56,14 +67,13 @@ function Encrypt(plainText, group) {
     }
     var iv = GetRandomValues(4);    
     var encryptedArray = [];
+
+    encryptedArray = encryptedArray.concat(iv);
     for(var i = 0; i < bits.length/4; i++){
       var index = i * 4;
       var block = [bits[index], bits[index+1], bits[index+2], bits[index+3]];
       
-
-      for(var j = 0; j < 4; j++){
-        block[j] ^= iv[j];
-      }
+      block = xorArray(block, iv);
       
       var ctext = cipher.encrypt(block); 
       iv = ctext;
@@ -91,17 +101,19 @@ function Decrypt(cipherText, group) {
     for(var i=0;i<len;i++){
       intArray[i] = parseInt(textArray[i])
     }
-
-    // console.log('cipherText = ' + intArray);
-
     var key = new Array(8); // = LoadKeys();
     var cipher = new sjcl.cipher.aes(key);    
-
     var resultStr = '';
-    for(var i = 0; i < len/4; i++){   
+
+    // read IV
+    var xorer = [intArray[0], intArray[1], intArray[2], intArray[3]];
+    for(var i = 1; i < len/4; i++){   
       var index = i * 4;
       var block = [intArray[index], intArray[index+1], intArray[index+2], intArray[index+3]];
       var decryptedMsg = cipher.decrypt(block);
+      
+      decryptedMsg = xorArray(decryptedMsg, xorer);      
+      xorer = block;
       var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
       resultStr += decryptStr;
     }
@@ -1642,12 +1654,12 @@ sjcl.hash.sha256.prototype = {
 
 // This is the initialization
 SetupUsernames();
-LoadKeys();
+//LoadKeys();
 AddElements();
 UpdateKeysTable();
 RegisterChangeEvents();
 
-console.log("CS255 script finished loading.");
+console.log("CS255 script finished loading!");
 
 // Stub for phantom.js (http://phantomjs.org/)
 if (typeof phantom !== "undefined") {
