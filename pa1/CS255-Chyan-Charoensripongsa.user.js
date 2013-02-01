@@ -111,8 +111,8 @@ function Decrypt(cipherText, group) {
 function GenerateKey(group) {
 
   // CS255-todo: Well this needs some work...
-  var key = 'CS255-todo';
-
+  var key = GetRandomValues(4);
+  
   keys[group] = key;
   SaveKeys();
 }
@@ -121,6 +121,13 @@ function GenerateKey(group) {
 function SaveKeys() {
   
   // CS255-todo: plaintext keys going to disk?
+  var pwd = sessionStorage.getItem('fb-db-pass-pt-'+ my_username)
+  var dec_salt = JSON.parse(cs255.localStorage.getItem('fb-db-dec-salt-' + my_username));
+
+  var cipher = new sjcl.cipher.aes(sjcl.misc.pbkdf2(pwd, dec_salt, null, 128));
+  for (key in keys) {
+    keys[key] = cipher.encrypt(keys[key]);
+  }
   var key_str = JSON.stringify(keys);
 
   cs255.localStorage.setItem('facebook-keys-' + my_username, encodeURIComponent(key_str));
@@ -128,54 +135,69 @@ function SaveKeys() {
 
 // Load the group keys from disk.
 function LoadKeys() {
+
   keys = {}; // Reset the keys.
   debugger;
-  var db_pwd = sessionStorage.getItem('fb-db-pass-'+ my_username);
-  if(!db_pwd) {
-    var db_pwd_pt = prompt('Enter new db password:');
-    var ver_salt = GetRandomValues(4);
-    var decrypt_salt = GetRandomValues(4);
-    sessionStorage.setItem('fb-db-pass-' + my_username, sjcl.misc.pbkdf2(db_pwd_pt,ver_salt, null, 128));
-    cs255.localStorage.setItem('fb-db-pass-' + my_username, sjcl.misc.pbkdf2(db_pwd_pt,ver_salt, null, 128));
-    cs255.localStorage.setItem('fb-db-ver-salt-' + my_username, ver_salt);
-    cs255.localStorage.setItem('fb-db-dec-salt-' + my_username, decrypt_salt);
-  }
-  else {
-    var stored_pwd = sessionStorage.getItem('fb-db-pass-' + my_username);
-    var ver_salt = cs255.localStorage.getItem('fb-db-ver-salt-' + my_username);
+  var session_pwd = sessionStorage.getItem('fb-db-pass-pt-'+ my_username);
+  if(!session_pwd) {
+    //hasn't entered a pw for this session
+    var db_pwd = cs255.localStorage.getItem('fb-db-pass-'+ my_username);
+    if(!db_pwd) { 
+      //never created db pw before
+      var db_pwd_pt = prompt('Enter new db password:');
+      var ver_salt = GetRandomValues(4);
+      var decrypt_salt = GetRandomValues(4);
+      sessionStorage.setItem('fb-db-pass-pt-' + my_username, db_pwd_pt);
+      cs255.localStorage.setItem('fb-db-ver-salt-' + my_username, JSON.stringify(ver_salt));
+      cs255.localStorage.setItem('fb-db-pass-' + my_username, JSON.stringify(sjcl.misc.pbkdf2(db_pwd_pt,ver_salt, null, 128)));
+      cs255.localStorage.setItem('fb-db-dec-salt-' + my_username, JSON.stringify(decrypt_salt));
 
-    for (var i = 0; i < 3; i++) {
-      var pwd_input = prompt('Enter db password:');
-      if ( sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128) == stored_pwd ) {
-        var dec_salt = cs255.localStorage.getItem('fb-db-dec-salt' + my_username);
-        var saved = cs255.localStorage.getItem('facebook-keys-' + my_username);
-        if (saved) {
-          var key_str = decodeURIComponent(saved);
-          // CS255-todo: plaintext keys were on disk?
-          keys = JSON.parse(key_str);
-          var db_key = new sjcl.cipher.aes(sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128));
+    }    
+    else {
+      //has created db pw before but not logged in yet
+      var ver_salt = JSON.parse(cs255.localStorage.getItem('fb-db-ver-salt-' + my_username));
 
+      for (var i = 0; i < 3; i++) {
+        var pwd_input = prompt('Enter db password:');
+        if ( arrayEqual(JSON.parse(sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128)) , db_pwd) ) {
+          sessionStorage.setItem('fb-db-pass-pt-' + my_username, pwd_input);
+          var dec_salt = cs255.localStorage.getItem('fb-db-dec-salt' + my_username);
+          var saved = cs255.localStorage.getItem('facebook-keys-' + my_username);
+          if (saved) {
+            var key_str = decodeURIComponent(saved);
+            //keys is mapping from group name to encrypted 128-bit key
+            keys = JSON.parse(key_str);
+            var cipher = new sjcl.cipher.aes(sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128));
+            for (key in keys) {
+              keys[key] = cipher.decrypt(keys[key]);
+            }
 
-    /*var cipher = 
-    var dumbtext = new Array(4);
-    dumbtext[0] = 1; dumbtext[1] = 2; dumbtext[2] = 3; dumbtext[3] = 4;
-    var ctext = cipher.encrypt(dumbtext);
-    var outtext = cipher.decrypt(ctext);
-          for (key in keys) {
-            keys[key] = 
-          }*/
+          }
+          break;
         }
-        break;
       }
     }
-    
-
-
   }
-
-
 }
 
+
+function arrayEqual(a1, a2) {
+  if (a1 == a2) {
+    return true;
+  }
+  else if (a1.length != a2.length) {
+    return false;
+  }
+  else {
+    //same length but different instance
+    for (var i=0; i < a1.length; i++) {
+      if (a1[i] != a2[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+}
 /////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
 //
@@ -304,13 +326,15 @@ function rot13(text) {
 function SetupUsernames() {
   // get who you are logged in as
   var meta = document.getElementsByClassName('navItem tinyman')[0];
-  if (typeof meta !== "undefined") {
-    var usernameMatched = /www.facebook.com\/(.*?)ref=tn_tnmn/i.exec(meta.innerHTML);
-    usernameMatched = usernameMatched[1].replace(/&amp;/, '');
-    usernameMatched = usernameMatched.replace(/\?/, '');
-    usernameMatched = usernameMatched.replace(/profile\.phpid=/, '');
-    my_username = usernameMatched; // Update global.
-  }
+
+  // If we can't get a username, halt execution.
+  assert (typeof meta !== "undefined", "CS255 script failed. No username detected. (This is usually harmless.)");
+  
+  var usernameMatched = /www.facebook.com\/(.*?)ref=tn_tnmn/i.exec(meta.innerHTML);
+  usernameMatched = usernameMatched[1].replace(/&amp;/, '');
+  usernameMatched = usernameMatched.replace(/\?/, '');
+  usernameMatched = usernameMatched.replace(/profile\.phpid=/, '');
+  my_username = usernameMatched; // Update global.
 }
 
 function getClassName(obj) {
@@ -407,6 +431,26 @@ function AddEncryptionTab() {
       table.setAttribute('border', 1);
       table.setAttribute('width', "80%");
       div.appendChild(table);
+
+      var clearSessionStorage = document.createElement('button');
+      clearSessionStorage.innerHTML = "Clear sessionStorage";
+      clearSessionStorage.addEventListener("click", function() {
+        sessionStorage.clear();
+        console.log("Cleared sessionStorage.");
+      });
+
+      div.appendChild(document.createElement('br'));
+      div.appendChild(clearSessionStorage);
+      var clearLocalStorage = document.createElement('button');
+      clearLocalStorage.innerHTML = "Clear localStorage";
+      clearLocalStorage.addEventListener("click", function() {
+        localStorage.clear();
+        cs255.localStorage.clear();
+        console.log("Cleared localStorage, including the extension cache.");
+      });
+
+      div.appendChild(document.createElement('br'));
+      div.appendChild(clearLocalStorage);
     }
   }
 }
