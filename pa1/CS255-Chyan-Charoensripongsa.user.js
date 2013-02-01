@@ -36,16 +36,35 @@ var keys = {}; // association map of keys: group -> key
 // @param {String} group Group name.
 // @return {String} Encryption of the plaintext, encoded as a string.
 function Encrypt(plainText, group) {
+  var tag = 'enc:';
   // CS255-todo: encrypt the plainText, using key for the group.
-  if ((plainText.indexOf('rot13:') == 0) || (plainText.length < 1)) {
+  if ((plainText.indexOf(tag) == 0) || (plainText.length < 1)) {
     // already done, or blank
     alert("Try entering a message (the button works only once)");
     return plainText;
   } else {
-    // encrypt, add tag.
-    return 'rot13:' + rot13(plainText);
-  }
+    var key = new Array(8); // = LoadKeys();    
+    var cipher = new sjcl.cipher.aes(key);    
+    var len = plainText.length;
+    var bits = sjcl.codec.utf8String.toBits(plainText);
 
+    // padding
+    if(bits.length % 4 != 0){    
+      for(var zeros = 4 - bits.length % 4; zeros > 0; zeros--){
+        bits = bits.concat([0]);
+      }
+    }
+    
+    var encryptedArray = [];
+    for(var i = 0; i < bits.length/4; i++){
+      var index = i * 4;
+      var block = [bits[index], bits[index+1], bits[index+2], bits[index+3]];
+      var ctext = cipher.encrypt(block);     
+      console.log(cipher.decrypt(ctext));
+      encryptedArray = encryptedArray.concat(ctext);
+    }
+    return tag + encryptedArray;
+  }
 }
 
 // Return the decryption of the message for the given group, in the form of a string.
@@ -55,14 +74,31 @@ function Encrypt(plainText, group) {
 // @param {String} group Group name.
 // @return {String} Decryption of the ciphertext.
 function Decrypt(cipherText, group) {
+  var tag = 'enc:';
+  if (cipherText.indexOf(tag) == 0) {
+        
+    var textArray = cipherText.slice(tag.length).split(',');    
+    var len = textArray.length;
+    var intArray = new Array(len);
+    for(var i=0;i<len;i++){
+      intArray[i] = parseInt(textArray[i])
+    }
 
-  // CS255-todo: implement decryption on encrypted messages
+    // console.log('cipherText = ' + intArray);
 
-  if (cipherText.indexOf('rot13:') == 0) {
+    var key = new Array(8); // = LoadKeys();
+    var cipher = new sjcl.cipher.aes(key);    
 
-    // decrypt, ignore the tag.
-    var decryptedMsg = rot13(cipherText.slice(6));
-    return decryptedMsg;
+    var resultStr = '';
+    for(var i = 0; i < len/4; i++){   
+      var index = i * 4;
+      var block = [intArray[index], intArray[index+1], intArray[index+2], intArray[index+3]];
+      var decryptedMsg = cipher.decrypt(block);
+      var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
+      resultStr += decryptStr;
+    }
+
+    return resultStr;
 
   } else {
     throw "not encrypted";
