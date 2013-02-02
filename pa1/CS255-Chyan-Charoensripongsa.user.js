@@ -62,17 +62,15 @@ function Encrypt(plainText, group) {
 function EncryptWithKey(plainText, key) {
     var tag = 'enc:';
 
-    //128, 192, 256 bits
+    // the key can be 128, 192, or 256 bits
     var cipher = new sjcl.cipher.aes(key);    
     var len = plainText.length;
     var bits = sjcl.codec.utf8String.toBits(plainText);
 
     // one block contains 4 x 4 = 16 bytes
     // padding format [data] || [n=3] [n=3] [n=3]
-    // pad with 0
     if(bits.length % 4 != 0){
       var numPad = 4 - bits.length % 4;
-      // for(var zeros = 4 - bits.length % 4; zeros > 0; zeros--){
       for(var i = 0; i < numPad; i++){
         bits = bits.concat([numPad]);
       }
