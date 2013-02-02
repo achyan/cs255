@@ -48,8 +48,11 @@ function Encrypt(plainText, group) {
     alert("Try entering a message (the button works only once)");
     return plainText;
   } else {
-    var key = JSON.parse(keys[group]); //new Array(8); //get key from keys[group]
-    if (!key) {
+    var key;
+    if(group in keys){
+      key = JSON.parse(keys[group]);
+    }
+    else{
       key = new Array(4);
     }
     return EncryptWithKey(plainText, key);
@@ -59,16 +62,23 @@ function Encrypt(plainText, group) {
 function EncryptWithKey(plainText, key) {
     var tag = 'enc:';
 
-      //128, 192, 256 bits
+    //128, 192, 256 bits
     var cipher = new sjcl.cipher.aes(key);    
     var len = plainText.length;
     var bits = sjcl.codec.utf8String.toBits(plainText);
 
+    // one block contains 4 x 4 = 16 bytes
+    // padding format [data] || [n=3] [n=3] [n=3]
     // pad with 0
-    if(bits.length % 4 != 0){    
-      for(var zeros = 4 - bits.length % 4; zeros > 0; zeros--){
-        bits = bits.concat([0]);
+    if(bits.length % 4 != 0){
+      var numPad = 4 - bits.length % 4;
+      // for(var zeros = 4 - bits.length % 4; zeros > 0; zeros--){
+      for(var i = 0; i < numPad; i++){
+        bits = bits.concat([numPad]);
       }
+    }
+    else { // append with a dummy block [4, 4, 4, 4]
+      bits = bits.concat([4, 4, 4, 4]);
     }
     var iv = GetRandomValues(4);    
     var encryptedArray = [];
@@ -94,8 +104,10 @@ function EncryptWithKey(plainText, key) {
 // @param {String} group Group name.
 // @return {String} Decryption of the ciphertext.
 function Decrypt(cipherText, group) {
-  var key = JSON.parse(keys[group]);
-  if (!key) {
+  var key;
+  if(group in keys){
+    key = JSON.parse(keys[group]);
+  } else {  
     key = new Array(4);
   }
   return DecryptWithKey(cipherText, key);
@@ -117,18 +129,28 @@ function DecryptWithKey(cipherText, key) {
 
     // read IV
     var xorer = [intArray[0], intArray[1], intArray[2], intArray[3]];
+    var decryptedMsg = [];
+
+    // read starting from block 1, (block 0 = IV)
     for(var i = 1; i < len/4; i++){   
       var index = i * 4;
       var block = [intArray[index], intArray[index+1], intArray[index+2], intArray[index+3]];
-      var decryptedMsg = cipher.decrypt(block);
+      var decryptedBits = cipher.decrypt(block);
       
-      decryptedMsg = xor4(decryptedMsg, xorer);      
+      decryptedMsg = decryptedMsg.concat(xor4(decryptedBits, xorer));
       xorer = block;
-      var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
-      resultStr += decryptStr;
     }
+    
+    // look at the last byte
+    var numPads = decryptedMsg[decryptedMsg.length-1];
 
-    return resultStr;
+    // drop the pads
+    decryptedMsg = decryptedMsg.slice(0, -numPads)
+
+    // directly convert the decrypted message to decrypted string
+    var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
+
+    return decryptStr;
 
   } else {
     throw "not encrypted";
