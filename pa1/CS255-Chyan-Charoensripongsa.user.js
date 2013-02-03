@@ -65,19 +65,26 @@ function EncryptWithKey(plainText, key) {
     // the key can be 128, 192, or 256 bits
     var cipher = new sjcl.cipher.aes(key);    
     var len = plainText.length;
-    var bits = sjcl.codec.utf8String.toBits(plainText);
+    
 
     // one block contains 4 x 4 = 16 bytes
     // padding format [data] || [n=3] [n=3] [n=3]
-    if(bits.length % 4 != 0){
-      var numPad = 4 - bits.length % 4;
+    var blockSizeInBytes = 16;
+    if(len % blockSizeInBytes != 0){
+      var numPad = blockSizeInBytes - len % blockSizeInBytes;
       for(var i = 0; i < numPad; i++){
-        bits = bits.concat([numPad]);
+        plainText += String.fromCharCode(numPad);
       }
     }
-    else { // append with a dummy block [4, 4, 4, 4]
-      bits = bits.concat([4, 4, 4, 4]);
+
+    else { // append with a dummy block 16 bytes of 0x10
+      for(var i = 0; i < blockSizeInBytes; i++){
+        plainText += String.fromCharCode(blockSizeInBytes);
+      }
     }
+
+    var bits = sjcl.codec.utf8String.toBits(plainText);
+
     var iv = GetRandomValues(4);    
     var encryptedArray = [];
 
@@ -123,7 +130,6 @@ function DecryptWithKey(cipherText, key) {
       intArray[i] = parseInt(textArray[i])
     }
     var cipher = new sjcl.cipher.aes(key);    
-    var resultStr = '';
 
     // read IV
     var xorer = [intArray[0], intArray[1], intArray[2], intArray[3]];
@@ -138,15 +144,29 @@ function DecryptWithKey(cipherText, key) {
       decryptedMsg = decryptedMsg.concat(xor4(decryptedBits, xorer));
       xorer = block;
     }
-    
+
+    // var bits = sjcl.codec.utf8String.toBits(plainText);
+
     // look at the last byte
-    var numPads = decryptedMsg[decryptedMsg.length-1];
+    var numPads = decryptedMsg[decryptedMsg.length-1] & 0x0f;
+
+    
+    
+    // var numPads = decryptedMsg[decryptedMsg.length-1];
 
     // drop the pads
-    decryptedMsg = decryptedMsg.slice(0, -numPads)
+    // decryptedMsg = decryptedMsg.slice(0, -numPads)
 
     // directly convert the decrypted message to decrypted string
     var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
+
+    decryptStr = decryptStr.slice(0, -numPads);
+    
+    // if(numPads == 16) { // drop entire block
+    //   decryptStr = decryptStr.slice(0, -num);
+    // } else {
+    //   decryptedMsg[decryptStr.length-1] >>= (8*numPads);
+    // }
 
     return decryptStr;
 
@@ -231,13 +251,12 @@ function DecryptKeys(pwd_input) {
     var encrypted_keys = JSON.parse(encrypted_key_str); 
     var keys_str = DecryptWithKey(encrypted_keys, sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128));
     console.log(keys_str.length);
-    //keys_str = keys_str.replace(/\0*$/,"")
+    // keys_str = keys_str.replace(/\0*$/,"")
     console.log("new length:" + keys_str.length);
     keys = JSON.parse(keys_str);
-
   }
 
-  return keys
+  return keys;
 }
 function arrayEqual(a1, a2) {
   if (a1 == a2) {
