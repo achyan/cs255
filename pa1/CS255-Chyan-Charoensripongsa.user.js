@@ -64,11 +64,10 @@ function EncryptWithKey(plainText, key) {
 
     // the key can be 128, 192, or 256 bits
     var cipher = new sjcl.cipher.aes(key);    
-    var len = plainText.length;
-    
+    var len = plainText.length;    
 
-    // one block contains 4 x 4 = 16 bytes
-    // padding format [data] || [n=3] [n=3] [n=3]
+    // padding format [x] || [15, 15, 15, ..., 15]
+    // padding format [x, x, x] || [12, 12, 12, ..., 12]    
     var blockSizeInBytes = 16;
     if(len % blockSizeInBytes != 0){
       var numPad = blockSizeInBytes - len % blockSizeInBytes;
@@ -76,18 +75,17 @@ function EncryptWithKey(plainText, key) {
         plainText += String.fromCharCode(numPad);
       }
     }
-
     else { // append with a dummy block 16 bytes of 0x10
       for(var i = 0; i < blockSizeInBytes; i++){
         plainText += String.fromCharCode(blockSizeInBytes);
       }
     }
-
     var bits = sjcl.codec.utf8String.toBits(plainText);
 
     var iv = GetRandomValues(4);    
     var encryptedArray = [];
 
+    // ectryption circuit
     encryptedArray = encryptedArray.concat(iv);
     for(var i = 0; i < bits.length/4; i++){
       var index = i * 4;
@@ -145,28 +143,14 @@ function DecryptWithKey(cipherText, key) {
       xorer = block;
     }
 
-    // var bits = sjcl.codec.utf8String.toBits(plainText);
-
     // look at the last byte
-    var numPads = decryptedMsg[decryptedMsg.length-1] & 0xff;
-
-    
-    
-    // var numPads = decryptedMsg[decryptedMsg.length-1];
-
-    // drop the pads
-    // decryptedMsg = decryptedMsg.slice(0, -numPads)
+    var numPads = decryptedMsg[decryptedMsg.length-1] & 0xff;    
 
     // directly convert the decrypted message to decrypted string
     var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
 
+    // drop pads
     decryptStr = decryptStr.slice(0, -numPads);
-
-    // if(numPads == 16) { // drop entire block
-    //   decryptStr = decryptStr.slice(0, -num);
-    // } else {
-    //   decryptedMsg[decryptStr.length-1] >>= (8*numPads);
-    // }
 
     return decryptStr;
 
