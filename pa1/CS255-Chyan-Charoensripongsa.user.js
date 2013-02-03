@@ -190,7 +190,7 @@ function LoadKeys() {
   var session_pwd = sessionStorage.getItem('fb-db-pass-pt-'+ my_username);
   if(!session_pwd) {
     //hasn't entered a pw for this session
-    var db_pwd = cs255.localStorage.getItem('fb-db-pass-'+ my_username);
+    var db_pwd = JSON.parse(cs255.localStorage.getItem('fb-db-pass-'+ my_username));
     if(!db_pwd) { 
       //never created db pw before
       var db_pwd_pt = prompt('Enter new db password:');
@@ -208,7 +208,7 @@ function LoadKeys() {
 
       for (var i = 0; i < 3; i++) {
         var pwd_input = prompt('Enter db password:');
-        if ( arrayEqual(JSON.parse(sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128)) , db_pwd) ) {
+        if ( arrayEqual(sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128), db_pwd) ) {
           sessionStorage.setItem('fb-db-pass-pt-' + my_username, pwd_input);
           keys = DecryptKeys(pwd_input);
           break;
@@ -231,7 +231,7 @@ function DecryptKeys(pwd_input) {
     var encrypted_keys = JSON.parse(encrypted_key_str); 
     var keys_str = DecryptWithKey(encrypted_keys, sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128));
     console.log(keys_str.length);
-    keys_str = keys_str.replace(/\0*$/,"")
+    //keys_str = keys_str.replace(/\0*$/,"")
     console.log("new length:" + keys_str.length);
     keys = JSON.parse(keys_str);
 
