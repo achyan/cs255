@@ -148,7 +148,7 @@ function DecryptWithKey(cipherText, key) {
     // var bits = sjcl.codec.utf8String.toBits(plainText);
 
     // look at the last byte
-    var numPads = decryptedMsg[decryptedMsg.length-1] & 0x0f;
+    var numPads = decryptedMsg[decryptedMsg.length-1] & 0xff;
 
     
     
@@ -161,7 +161,7 @@ function DecryptWithKey(cipherText, key) {
     var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
 
     decryptStr = decryptStr.slice(0, -numPads);
-    
+
     // if(numPads == 16) { // drop entire block
     //   decryptStr = decryptStr.slice(0, -num);
     // } else {
