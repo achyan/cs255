@@ -48,13 +48,16 @@ function Encrypt(plainText, group) {
     alert("Try entering a message (the button works only once)");
     return plainText;
   } else {
-    var key;
+    var key = new Array(4);
     if(group in keys){
-      key = JSON.parse(keys[group]);
+      try {
+        key = JSON.parse(keys[group]);
+      }
+      catch (err) {
+        console.log("Invalid key"); // use default key
+      }
     }
-    else{
-      key = new Array(4);
-    }
+
     return EncryptWithKey(plainText, key);
   }
 }
@@ -93,7 +96,7 @@ function EncryptWithKey(plainText, key) {
       block = xor4(block, iv);      
       var ctext = cipher.encrypt(block); 
       iv = ctext;      
-      console.log(cipher.decrypt(ctext));
+      //console.log(cipher.decrypt(ctext));
       encryptedArray = encryptedArray.concat(ctext);
     }
     return tag + encryptedArray;
@@ -107,11 +110,14 @@ function EncryptWithKey(plainText, key) {
 // @param {String} group Group name.
 // @return {String} Decryption of the ciphertext.
 function Decrypt(cipherText, group) {
-  var key;
+  var key = new Array(4);
   if(group in keys){
-    key = JSON.parse(keys[group]);
-  } else {  
-    key = new Array(4);
+    try {
+      key = JSON.parse(keys[group]);
+    }
+    catch (err) {
+      console.log("Invalid key"); //use default key
+    }
   }
   return DecryptWithKey(cipherText, key);
 
@@ -178,10 +184,8 @@ function SaveKeys() {
   var dec_salt = JSON.parse(cs255.localStorage.getItem('fb-db-dec-salt-' + my_username));
 
   var key_str = JSON.stringify(keys);
-  console.log("before encrypt and store:" + key_str + ", length:" + key_str.length);
-  var encrypted_key = EncryptWithKey(key_str, sjcl.misc.pbkdf2(pwd, dec_salt, null, 128));
-  var encrypted_key_str = JSON.stringify(encrypted_key);
-
+  //console.log("before encrypt and store:" + key_str + ", length:" + key_str.length);
+  var encrypted_key_str = EncryptWithKey(key_str, sjcl.misc.pbkdf2(pwd, dec_salt, null, 128));
 
   cs255.localStorage.setItem('facebook-keys-' + my_username, encodeURIComponent(encrypted_key_str));
 }
@@ -230,13 +234,10 @@ function DecryptKeys(pwd_input) {
   var dec_salt = JSON.parse(cs255.localStorage.getItem('fb-db-dec-salt-' + my_username));
   var saved = cs255.localStorage.getItem('facebook-keys-' + my_username);
   if (saved) {
-    var encrypted_key_str = decodeURIComponent(saved);
+    var encrypted_keys = decodeURIComponent(saved);
     //keys is mapping from group name to encrypted 128-bit key
-    var encrypted_keys = JSON.parse(encrypted_key_str); 
     var keys_str = DecryptWithKey(encrypted_keys, sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128));
-    console.log(keys_str.length);
     // keys_str = keys_str.replace(/\0*$/,"")
-    console.log("new length:" + keys_str.length);
     keys = JSON.parse(keys_str);
   }
 
