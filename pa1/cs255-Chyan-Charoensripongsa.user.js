@@ -193,7 +193,7 @@ function SaveKeys() {
 function LoadKeys() {
 
   keys = {}; // Reset the keys.
-  debugger;
+  //debugger;
   var session_pwd = sessionStorage.getItem('fb-db-pass-pt-'+ my_username);
   if(!session_pwd) {
     //hasn't entered a pw for this session
