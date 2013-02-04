@@ -184,7 +184,6 @@ function SaveKeys() {
   var dec_salt = JSON.parse(cs255.localStorage.getItem('fb-db-dec-salt-' + my_username));
 
   var key_str = JSON.stringify(keys);
-  //console.log("before encrypt and store:" + key_str + ", length:" + key_str.length);
   var encrypted_key_str = EncryptWithKey(key_str, sjcl.misc.pbkdf2(pwd, dec_salt, null, 128));
 
   cs255.localStorage.setItem('facebook-keys-' + my_username, encodeURIComponent(encrypted_key_str));
@@ -201,7 +200,7 @@ function LoadKeys() {
     var db_pwd = JSON.parse(cs255.localStorage.getItem('fb-db-pass-'+ my_username));
     if(!db_pwd) { 
       //never created db pw before
-      var db_pwd_pt = prompt('Enter new db password:');
+      var db_pwd_pt = prompt('Enter new db password:') || "";
       var ver_salt = GetRandomValues(4);
       var decrypt_salt = GetRandomValues(4);
       sessionStorage.setItem('fb-db-pass-pt-' + my_username, db_pwd_pt);
@@ -215,7 +214,8 @@ function LoadKeys() {
       var ver_salt = JSON.parse(cs255.localStorage.getItem('fb-db-ver-salt-' + my_username));
 
       for (var i = 0; i < 3; i++) {
-        var pwd_input = prompt('Enter db password:');
+        var pwd_input = prompt('Enter db password:') || "";
+        //verify the pwd against the stored pwd hash in localStorage
         if ( arrayEqual(sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128), db_pwd) ) {
           sessionStorage.setItem('fb-db-pass-pt-' + my_username, pwd_input);
           keys = DecryptKeys(pwd_input);
