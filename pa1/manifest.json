@@ -2,15 +2,15 @@
   "content_scripts": [ {
     "exclude_globs": [  ],
     "include_globs": [ "http://www.facebook.com/*", "https://www.facebook.com/*" ],
-    "js": [ "CS255-Chyan-Charoensripongsa.user.js" ],
+    "js": [ "cs255-Chyan-Charoensripongsa.user.js" ],
     "matches": [ "http://*/*", "https://*/*" ],
     "run_at": "document_idle"
   } ],
   "permissions": ["storage"],
   "converted_from_user_script": true,
-  "description": "CS255-Chyan-Charoensripongsa - CS255 Assignment 1",
+  "description": "cs255-Chyan-Charoensripongsa - CS255 Assignment 1",
   "key": "ad44N+Oz4atwVsSOFmiueoWpb/1JG9aQpjLf4eorMWU=",
-  "name": "CS255-Chyan-Charoensripongsa",
+  "name": "cs255-Chyan-Charoensripongsa",
   "version": "1.5",
   "manifest_version": 2
 }
