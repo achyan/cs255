@@ -34,6 +34,14 @@ function xor4(x, y) {
     return [x[0] ^ y[0], x[1] ^ y[1], x[2] ^ y[2], x[3] ^ y[3]];
 }
 
+// Question: given 128-key, can we generate a random key as the following?
+function GenerateSubkey(key) {  
+  var key0 = [0,0,0,0];  
+  var cipher = new sjcl.cipher.aes(key);
+  var subkey = cipher.encrypt(key);  
+  return subkey;
+}
+
 // Return the encryption of the message for the given group, in the form of a string.
 //
 // @param {String} plainText String to encrypt.
@@ -60,6 +68,41 @@ function Encrypt(plainText, group) {
 
     return EncryptWithKey(plainText, key);
   }
+}
+
+// tag included in the cipherArray
+function Validate(cipherArray, key) {
+  var len = cipherArray.length;
+  var tagBlock = cipherArray.slice(-4);
+  var calculatedCMAC = GenerateCMAC(cipherArray.slice(0, -4), key);
+  return arrayEqual(calculatedCMAC, tagBlock);
+}
+
+// return tag of size = 128 bits
+function GenerateCMAC(cipherArray, key) {
+  var subKey = GenerateSubkey(key);  
+  var nBlocks = cipherArray.length / 4;
+  
+  var cipher = new sjcl.cipher.aes(key);
+  var encryptedBlock = null;
+  for(var i = 0; i < nBlocks; i++) {
+    var index = i * 4;
+    var block = [cipherArray[index], cipherArray[index+1], 
+                cipherArray[index+2], cipherArray[index+3]];
+    
+    // not the first block
+    if(encryptedBlock != null) {      
+      block = xor4(block, encryptedBlock);
+    }
+    
+    // last block
+    if(i == nBlocks-1) {
+      block = xor4(block, subKey);
+    }
+
+    encryptedBlock = cipher.encrypt(block);
+  }
+  return encryptedBlock;
 }
 
 function EncryptWithKey(plainText, key) {
@@ -96,9 +139,15 @@ function EncryptWithKey(plainText, key) {
       block = xor4(block, iv);      
       var ctext = cipher.encrypt(block); 
       iv = ctext;      
-      //console.log(cipher.decrypt(ctext));
       encryptedArray = encryptedArray.concat(ctext);
     }
+    
+    // add the CMAC tag at the last block
+    // IPsec construction
+    var cmacTag = GenerateCMAC(encryptedArray, key);
+
+    encryptedArray = encryptedArray.concat(cmacTag);
+
     return tag + encryptedArray;
 
 }
@@ -132,15 +181,26 @@ function DecryptWithKey(cipherText, key) {
     var intArray = new Array(len);
     for(var i=0;i<len;i++){
       intArray[i] = parseInt(textArray[i])
+    }            
+
+    // validate tag
+    // what to do if it failed?
+    if(!Validate(intArray, key)) {
+      throw "authentication failed";
     }
-    var cipher = new sjcl.cipher.aes(key);    
+    
+    // cut the tag off, now the rest is as before
+    intArray = intArray.slice(0, -4);
+    
+    var cipher = new sjcl.cipher.aes(key);
 
     // read IV
     var xorer = [intArray[0], intArray[1], intArray[2], intArray[3]];
     var decryptedMsg = [];
+    // console.log("xorer = " + xorer);
 
     // read starting from block 1, (block 0 = IV)
-    for(var i = 1; i < len/4; i++){   
+    for(var i = 1; i < intArray.length/4; i++){   
       var index = i * 4;
       var block = [intArray[index], intArray[index+1], intArray[index+2], intArray[index+3]];
       var decryptedBits = cipher.decrypt(block);
@@ -151,6 +211,7 @@ function DecryptWithKey(cipherText, key) {
 
     // look at the last byte
     var numPads = decryptedMsg[decryptedMsg.length-1] & 0xff;    
+    // console.log("numPads = " + numPads);
 
     // directly convert the decrypted message to decrypted string
     var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
