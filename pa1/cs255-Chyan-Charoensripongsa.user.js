@@ -240,12 +240,25 @@ function GenerateKey(group) {
 // Take the current group keys, and save them to disk.
 function SaveKeys() {
   
-  // CS255-todo: plaintext keys going to disk?
-  var pwd = sessionStorage.getItem('fb-db-pass-pt-'+ my_username)
-  var dec_salt = JSON.parse(cs255.localStorage.getItem('fb-db-dec-salt-' + my_username));
+  var key = JSON.parse(sessionStorage.getItem('fb-db-pass-key-'+ my_username));
+  var cipher = new sjcl.cipher.aes(key);
+  var enc_keys = {}; 
+  for (var group in keys) {
+    var group_key_str = keys[group];
+    try {
+      var group_key = JSON.parse(group_key_str); //encrypt the uniform-sized byte array instead of string to prevent length attack
+      enc_keys[group] = cipher.encrypt(group_key);
+    }
+    catch (err) {
+      alert('Invalid key format: using default key');
+      var new_key = new Array(4);
+      keys[group] = JSON.stringify(new_key);
+      enc_keys[group] = cipher.encrypt(new_key);
+    }
 
-  var key_str = JSON.stringify(keys);
-  var encrypted_key_str = EncryptWithKey(key_str, sjcl.misc.pbkdf2(pwd, dec_salt, null, 128));
+  }
+  var key_str = JSON.stringify(enc_keys);
+  var encrypted_key_str = EncryptWithKey(key_str, key);
 
   cs255.localStorage.setItem('facebook-keys-' + my_username, encodeURIComponent(encrypted_key_str));
 }
@@ -255,8 +268,8 @@ function LoadKeys() {
 
   keys = {}; // Reset the keys.
   //debugger;
-  var session_pwd = sessionStorage.getItem('fb-db-pass-pt-'+ my_username);
-  if(!session_pwd) {
+  var session_key = sessionStorage.getItem('fb-db-pass-key-'+ my_username);
+  if(!session_key) {
     //hasn't entered a pw for this session
     var db_pwd = JSON.parse(cs255.localStorage.getItem('fb-db-pass-'+ my_username));
     if(!db_pwd) { 
@@ -264,7 +277,8 @@ function LoadKeys() {
       var db_pwd_pt = prompt('Enter new db password:') || "";
       var ver_salt = GetRandomValues(4);
       var decrypt_salt = GetRandomValues(4);
-      sessionStorage.setItem('fb-db-pass-pt-' + my_username, db_pwd_pt);
+      var key = sjcl.misc.pbkdf2(db_pwd_pt, decrypt_salt, null, 128);
+      sessionStorage.setItem('fb-db-pass-key-' + my_username, JSON.stringify(key));
       cs255.localStorage.setItem('fb-db-ver-salt-' + my_username, JSON.stringify(ver_salt));
       cs255.localStorage.setItem('fb-db-pass-' + my_username, JSON.stringify(sjcl.misc.pbkdf2(db_pwd_pt,ver_salt, null, 128)));
       cs255.localStorage.setItem('fb-db-dec-salt-' + my_username, JSON.stringify(decrypt_salt));
@@ -273,37 +287,50 @@ function LoadKeys() {
     else {
       //has created db pw before but not logged in yet
       var ver_salt = JSON.parse(cs255.localStorage.getItem('fb-db-ver-salt-' + my_username));
+      var dec_salt = JSON.parse(cs255.localStorage.getItem('fb-db-dec-salt-' + my_username));
 
       for (var i = 0; i < 3; i++) {
         var pwd_input = prompt('Enter db password:') || "";
         //verify the pwd against the stored pwd hash in localStorage
         if ( arrayEqual(sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128), db_pwd) ) {
-          sessionStorage.setItem('fb-db-pass-pt-' + my_username, pwd_input);
-          keys = DecryptKeys(pwd_input);
+          var key = sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128);
+          sessionStorage.setItem('fb-db-pass-key-' + my_username, JSON.stringify(key));
+          keys = DecryptKeys(key);
           break;
         }
       }
     }
   }
   else {
-    keys = DecryptKeys(session_pwd);
+    keys = DecryptKeys(JSON.parse(session_key));
+
   }
 }
 
-function DecryptKeys(pwd_input) {
+function DecryptKeys(key) {
   var keys = {}
-  var dec_salt = JSON.parse(cs255.localStorage.getItem('fb-db-dec-salt-' + my_username));
   var saved = cs255.localStorage.getItem('facebook-keys-' + my_username);
   if (saved) {
     var encrypted_keys = decodeURIComponent(saved);
-    //keys is mapping from group name to encrypted 128-bit key
-    var keys_str = DecryptWithKey(encrypted_keys, sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128));
+    var keys_str = DecryptWithKey(encrypted_keys, key);
     // keys_str = keys_str.replace(/\0*$/,"")
+    //keys is mapping from group name to encrypted 128-bit key
     keys = JSON.parse(keys_str);
+    var cipher = new sjcl.cipher.aes(key);
+    for (var group in keys) {
+      keys[group] = JSON.stringify(cipher.decrypt(keys[group]));
+    }
   }
 
   return keys;
 }
+
+/*
+ *only use for comparison of hashes, subject to timing attack if comparing
+ *keys directly. For hashes, knowing that the first byte is correct still
+ *doesn't help to identify the password, because the hash can already be
+ *found by looking at the localStorage
+ */
 function arrayEqual(a1, a2) {
   if (a1 == a2) {
     return true;
