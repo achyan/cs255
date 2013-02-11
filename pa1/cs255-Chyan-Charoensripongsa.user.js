@@ -35,10 +35,9 @@ function xor4(x, y) {
 }
 
 // Question: given 128-key, can we generate a random key as the following?
-function GenerateSubkey(key) {  
-  var key0 = [0,0,0,0];  
-  var cipher = new sjcl.cipher.aes(key);
-  var subkey = cipher.encrypt(key);  
+function GenerateSubkey(masterKey, PRFkey) {    
+  var cipher = new sjcl.cipher.aes(PRFkey);
+  var subkey = cipher.encrypt(masterKey);  
   return subkey;
 }
 
@@ -74,16 +73,20 @@ function Encrypt(plainText, group) {
 function Validate(cipherArray, key) {
   var len = cipherArray.length;
   var tagBlock = cipherArray.slice(-4);
-  var calculatedCMAC = GenerateCMAC(cipherArray.slice(0, -4), key);
+  var calculatedCMAC = GenerateCBC_MAC(cipherArray.slice(0, -4), key);
   return arrayEqual(calculatedCMAC, tagBlock);
 }
 
 // return tag of size = 128 bits
-function GenerateCMAC(cipherArray, key) {
-  var subKey = GenerateSubkey(key);  
+function GenerateCBC_MAC(cipherArray, key) {
+
+  // derive another two keys using AES
+  var Ki = GenerateSubkey(key, [0, 0, 0, 0]);
+  var KiLast = GenerateSubkey(key, [0, 0, 0, 1]);
+
   var nBlocks = cipherArray.length / 4;
   
-  var cipher = new sjcl.cipher.aes(key);
+  var cipher = new sjcl.cipher.aes(Ki);
   var encryptedBlock = null;
   for(var i = 0; i < nBlocks; i++) {
     var index = i * 4;
@@ -94,14 +97,14 @@ function GenerateCMAC(cipherArray, key) {
     if(encryptedBlock != null) {      
       block = xor4(block, encryptedBlock);
     }
-    
-    // last block
-    if(i == nBlocks-1) {
-      block = xor4(block, subKey);
-    }
 
     encryptedBlock = cipher.encrypt(block);
   }
+
+  // encrypt the last block using another Ki
+  cipher = new sjcl.cipher.aes(KiLast);
+  encryptedBlock = cipher.encrypt(encryptedBlock);
+
   return encryptedBlock;
 }
 
@@ -144,7 +147,7 @@ function EncryptWithKey(plainText, key) {
     
     // add the CMAC tag at the last block
     // IPsec construction
-    var cmacTag = GenerateCMAC(encryptedArray, key);
+    var cmacTag = GenerateCBC_MAC(encryptedArray, key);
 
     encryptedArray = encryptedArray.concat(cmacTag);
 
@@ -169,7 +172,6 @@ function Decrypt(cipherText, group) {
     }
   }
   return DecryptWithKey(cipherText, key);
-
 }
 
 function DecryptWithKey(cipherText, key) {
@@ -229,8 +231,6 @@ function DecryptWithKey(cipherText, key) {
 //
 // @param {String} group Group name.
 function GenerateKey(group) {
-
-  // CS255-todo: Well this needs some work...
   var key = GetRandomValues(4);
   
   keys[group] = JSON.stringify(key); //users are expected to pass around the key as a string, so we store a string
