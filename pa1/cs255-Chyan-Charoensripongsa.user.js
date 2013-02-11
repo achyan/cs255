@@ -50,9 +50,9 @@ function GenerateSubkey(key) {
 function Encrypt(plainText, group) {
   var tag = 'enc:';
 
-  // CS255-todo: encrypt the plainText, using key for the group.
-  if ((plainText.indexOf(tag) == 0) || (plainText.length < 1)) {
-    // already done, or blank
+  // Note: we also allow an empty string to be encrypted
+  if ((plainText.indexOf(tag) == 0)) {
+    // already encrypted
     alert("Try entering a message (the button works only once)");
     return plainText;
   } else {
