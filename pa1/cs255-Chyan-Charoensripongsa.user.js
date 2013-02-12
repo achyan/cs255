@@ -72,6 +72,10 @@ function Encrypt(plainText, group) {
 // tag included in the cipherArray
 function Validate(cipherArray, key) {
   var len = cipherArray.length;
+  // the cipherArray needs to be at least 4 
+  if(len < 4) {
+    return false;
+  }
   var tagBlock = cipherArray.slice(-4);
   var calculatedCMAC = GenerateCBC_MAC(cipherArray.slice(0, -4), key);
   //return arrayEqual(calculatedCMAC, tagBlock);
@@ -186,7 +190,7 @@ function DecryptWithKey(cipherText, key) {
       intArray[i] = parseInt(textArray[i])
     }            
 
-    // validate tag
+    // validate tag and check the format
     // what to do if it failed?
     if(!Validate(intArray, key)) {
       throw "authentication failed";
