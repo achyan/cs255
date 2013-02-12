@@ -292,7 +292,7 @@ function LoadKeys() {
       for (var i = 0; i < 3; i++) {
         var pwd_input = prompt('Enter db password:') || "";
         //verify the pwd against the stored pwd hash in localStorage
-        if ( arrayEqual(sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128), db_pwd) ) {
+        if ( sjcl.bitArray.equal(sjcl.misc.pbkdf2(pwd_input, ver_salt, null, 128), db_pwd) ) {
           var key = sjcl.misc.pbkdf2(pwd_input, dec_salt, null, 128);
           sessionStorage.setItem('fb-db-pass-key-' + my_username, JSON.stringify(key));
           keys = DecryptKeys(key);
@@ -325,29 +325,7 @@ function DecryptKeys(key) {
   return keys;
 }
 
-/*
- *only use for comparison of hashes, subject to timing attack if comparing
- *keys directly. For hashes, knowing that the first byte is correct still
- *doesn't help to identify the password, because the hash can already be
- *found by looking at the localStorage
- */
-function arrayEqual(a1, a2) {
-  if (a1 == a2) {
-    return true;
-  }
-  else if (a1.length != a2.length) {
-    return false;
-  }
-  else {
-    //same length but different instance
-    for (var i=0; i < a1.length; i++) {
-      if (a1[i] != a2[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-}
+
 /////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
 //
