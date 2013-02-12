@@ -72,9 +72,14 @@ function Encrypt(plainText, group) {
 // tag included in the cipherArray
 function Validate(cipherArray, key) {
   var len = cipherArray.length;
+  // the cipherArray needs to be at least 4 
+  if(len < 4) {
+    return false;
+  }
   var tagBlock = cipherArray.slice(-4);
   var calculatedCMAC = GenerateCBC_MAC(cipherArray.slice(0, -4), key);
-  return arrayEqual(calculatedCMAC, tagBlock);
+  //return arrayEqual(calculatedCMAC, tagBlock);
+  return sjcl.bitArray.equal(calculatedCMAC, tagBlock);
 }
 
 // return tag of size = 128 bits
@@ -185,7 +190,7 @@ function DecryptWithKey(cipherText, key) {
       intArray[i] = parseInt(textArray[i])
     }            
 
-    // validate tag
+    // validate tag and check the format
     // what to do if it failed?
     if(!Validate(intArray, key)) {
       throw "authentication failed";
@@ -199,7 +204,6 @@ function DecryptWithKey(cipherText, key) {
     // read IV
     var xorer = [intArray[0], intArray[1], intArray[2], intArray[3]];
     var decryptedMsg = [];
-    // console.log("xorer = " + xorer);
 
     // read starting from block 1, (block 0 = IV)
     for(var i = 1; i < intArray.length/4; i++){   
@@ -213,7 +217,6 @@ function DecryptWithKey(cipherText, key) {
 
     // look at the last byte
     var numPads = decryptedMsg[decryptedMsg.length-1] & 0xff;    
-    // console.log("numPads = " + numPads);
 
     // directly convert the decrypted message to decrypted string
     var decryptStr = sjcl.codec.utf8String.fromBits(decryptedMsg);
