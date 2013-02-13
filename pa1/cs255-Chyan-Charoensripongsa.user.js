@@ -34,7 +34,6 @@ function xor4(x, y) {
     return [x[0] ^ y[0], x[1] ^ y[1], x[2] ^ y[2], x[3] ^ y[3]];
 }
 
-// Question: given 128-key, can we generate a random key as the following?
 function GenerateSubkey(masterKey, PRFkey) {    
   var cipher = new sjcl.cipher.aes(PRFkey);
   var subkey = cipher.encrypt(masterKey);  
@@ -72,13 +71,15 @@ function Encrypt(plainText, group) {
 // tag included in the cipherArray
 function Validate(cipherArray, key) {
   var len = cipherArray.length;
+
   // the cipherArray needs to be at least 4 
   if(len < 4) {
     return false;
   }
+
   var tagBlock = cipherArray.slice(-4);
   var calculatedCMAC = GenerateCBC_MAC(cipherArray.slice(0, -4), key);
-  //return arrayEqual(calculatedCMAC, tagBlock);
+
   return sjcl.bitArray.equal(calculatedCMAC, tagBlock);
 }
 
@@ -190,8 +191,7 @@ function DecryptWithKey(cipherText, key) {
       intArray[i] = parseInt(textArray[i])
     }            
 
-    // validate tag and check the format
-    // what to do if it failed?
+    // validate tag
     if(!Validate(intArray, key)) {
       throw "authentication failed";
     }
