@@ -31,7 +31,7 @@ import iaik.asn1.structures.Name;
  *
  * A HTTPS proxy client first send a CONNECT message to the proxy
  * port. The proxy accepts the connection responds with a 200 OK,
- * which is the client's queue to send SSL data to the proxy. The
+ * which is the client's cue to send SSL data to the proxy. The
  * proxy just forwards it on to the server identified by the CONNECT
  * message.
  *
