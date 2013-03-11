@@ -31,7 +31,7 @@ import iaik.asn1.structures.Name;
  *
  * A HTTPS proxy client first send a CONNECT message to the proxy
  * port. The proxy accepts the connection responds with a 200 OK,
- * which is the client's queue to send SSL data to the proxy. The
+ * which is the client's cue to send SSL data to the proxy. The
  * proxy just forwards it on to the server identified by the CONNECT
  * message.
  *
@@ -156,10 +156,11 @@ public class HTTPSProxyEngine extends ProxyEngine
 		    //   so that we can copy those values in the certificate that we forge.
 		    //   (Recall that we, as a MITM, obtain the server's actual certificate from our own session as a client
 		    //    to that server.)
-		    javax.security.cert.X509Certificate[] serverCertChain = null;
+		    javax.security.cert.X509Certificate[] serverCertChain = remoteSocket.getSession().getPeerCertificateChain();
+			javax.security.cert.X509Certificate cert = serverCertChain[0];
 		    iaik.x509.X509Certificate serverCertificate = null;
-		    Principal serverDN = null;
-		    BigInteger serverSerialNumber = null;
+		    Principal serverDN = remoteSocket.getSession().getPeerPrincipal();
+		    BigInteger serverSerialNumber = cert.getSerialNumber();
 
 
 		    //We've already opened the socket, so might as well keep using it:
