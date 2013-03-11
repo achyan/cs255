@@ -10,7 +10,7 @@ print adminPwd
 f.close()
 
 salt = bcrypt.gensalt()
-hashed = bcrypt.hashpw('adminPassword', salt)
+hashed = bcrypt.hashpw(adminPwd, salt)
 
 print hashed
 
