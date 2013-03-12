@@ -158,8 +158,8 @@ public class HTTPSProxyEngine extends ProxyEngine
 		    //    to that server.)
 		    javax.security.cert.X509Certificate[] serverCertChain = remoteSocket.getSession().getPeerCertificateChain();
 			javax.security.cert.X509Certificate cert = serverCertChain[0];
-		    iaik.x509.X509Certificate serverCertificate = null;
-		    Principal serverDN = remoteSocket.getSession().getPeerPrincipal();
+		    iaik.x509.X509Certificate serverCertificate = new iaik.x509.X509Certificate(cert.getEncoded());
+		    Principal serverDN = serverCertificate.getSubjectDN();
 		    BigInteger serverSerialNumber = cert.getSerialNumber();
 
 

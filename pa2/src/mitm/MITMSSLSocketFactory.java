@@ -3,8 +3,8 @@
 
 package mitm;
 
+
 import iaik.asn1.structures.AlgorithmID;
-import iaik.x509.X509Certificate;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -108,6 +108,7 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 	throws IOException,GeneralSecurityException, Exception
     {
 	//this();
+	
         // TODO(cs255): replace this with code to generate a new (forged) server certificate with a DN of serverDN
         //   and a serial number of serialNumber.
 
@@ -124,7 +125,6 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 	}
 
 	final KeyStore keyStore;
-	
 	if (keyStoreFile != null) {
 	    keyStore = KeyStore.getInstance(keyStoreType);
 	    keyStore.load(new FileInputStream(keyStoreFile), keyStorePassword);
@@ -139,16 +139,19 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 	PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, keyStorePassword);
 	iaik.x509.X509Certificate certificate = new iaik.x509.X509Certificate(keyStore.getCertificate(alias).getEncoded());
 	PublicKey publicKey = (PublicKey) keyStore.getCertificate(alias).getPublicKey();
-	Principal ourDN = ((iaik.x509.X509Certificate) keyStore.getCertificate(alias)).getSubjectDN();
-
+	Principal ourDN = certificate.getSubjectDN();
+	iaik.x509.X509Certificate serverCertificate = new iaik.x509.X509Certificate();
+	serverCertificate.setSubjectDN(serverDN);
+	serverCertificate.setIssuerDN(ourDN);
+	serverCertificate.setSerialNumber(serialNumber);
+	serverCertificate.setPublicKey(publicKey);
+	serverCertificate.setValidNotBefore(certificate.getNotBefore());
+	serverCertificate.setValidNotAfter(certificate.getNotAfter());
+	serverCertificate.sign(AlgorithmID.sha1WithRSAEncryption, privateKey);
 	// . . .
-
-	//iaik.x509.X509Certificate serverCertificate = // . . .
-
-	// . . .
-
 	KeyStore serverKeyStore = KeyStore.getInstance(keyStoreType);
-
+	serverKeyStore.load(null);
+	serverKeyStore.setKeyEntry(alias, privateKey, "".toCharArray(), new Certificate[] {serverCertificate});
 	// . . .
 	
 	final KeyManagerFactory keyManagerFactory =
@@ -160,8 +163,8 @@ public final class MITMSSLSocketFactory implements MITMSocketFactory
 			  new TrustManager[] { new TrustEveryone() },
 			  null);
 
-	m_clientSocketFactory =  null;// . . .
-	m_serverSocketFactory = null; // . . .
+	m_clientSocketFactory = m_sslContext.getSocketFactory();// . . .
+	m_serverSocketFactory = m_sslContext.getServerSocketFactory(); // . . .
 
 	
     }
