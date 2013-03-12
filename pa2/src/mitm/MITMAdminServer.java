@@ -17,10 +17,10 @@ class MITMAdminServer implements Runnable
     private HTTPSProxyEngine m_engine;
     
     public MITMAdminServer( String localHost, int adminPort, HTTPSProxyEngine engine ) throws IOException,GeneralSecurityException {
-	MITMSSLSocketFactory socketFactory = new MITMSSLSocketFactory();
+    	MITMSSLSocketFactory socketFactory = new MITMSSLSocketFactory();
 				
-	m_serverSocket = socketFactory.createServerSocket( localHost, adminPort, 0 );
-	m_engine = engine;
+		m_serverSocket = socketFactory.createServerSocket( localHost, adminPort, 0 );
+		m_engine = engine;
     }
 
     public void run() {
@@ -103,25 +103,24 @@ class MITMAdminServer implements Runnable
     }
     
     private void sendString(final String str) throws IOException {
-	PrintWriter writer = new PrintWriter( m_socket.getOutputStream() );
-	writer.println(str);
-	writer.flush();
+		PrintWriter writer = new PrintWriter( m_socket.getOutputStream() );
+		writer.println(str);
+		writer.flush();
     }
     
     private void doCommand( String cmd ) throws IOException {
 
 		// TODO(cs255): instead of greeting admin client, run the indicated command
     	if(cmd.equals("shutdown")) {
-    		sendString("I'll shut down");
-    	} else if(cmd.equals("stats")) {
-    		sendString("I'll show stats");
+    		// shut down the whole process
+    		System.exit(0);
+    	} else if(cmd.equals("stats")) {    		
+    		sendString("stats: total requests = " + m_engine.getNumRequests());
     	} else {
     		sendString("Unknown command. Bye!");
     	}
-//		sendString("How are you Admin Client !!");
-	
+//		sendString("How are you Admin Client !!");	
 		m_socket.close();
-	
     }
 
 }

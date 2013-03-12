@@ -57,6 +57,8 @@ public class HTTPSProxyEngine extends ProxyEngine
 
     private final ProxySSLEngine m_proxySSLEngine;
     
+    private int numRequests = 0;
+    
     public HTTPSProxyEngine(MITMPlainSocketFactory plainSocketFactory,
 			    MITMSSLSocketFactory sslSocketFactory,
 			    ProxyDataFilter requestFilter,
@@ -200,6 +202,9 @@ public class HTTPSProxyEngine extends ProxyEngine
 		    // Send a 200 response to send to client. Client
 		    // will now start sending SSL data to localSocket.
 		    sendClientResponse(out,"200 OK",remoteHost,remotePort);
+		    
+		    // increment requests
+		    numRequests++;
 		}
 		else { //Not a CONNECT request.. nothing we can do.
 		    System.err.println(
@@ -288,6 +293,10 @@ public class HTTPSProxyEngine extends ProxyEngine
 		    e.printStackTrace(System.err);
 		}
 	}
+    }
+    
+    public int getNumRequests(){
+    	return numRequests;
     }
 
 }
