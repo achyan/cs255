@@ -24,55 +24,84 @@ class MITMAdminServer implements Runnable
     }
 
     public void run() {
-	System.out.println("Admin server initialized, listening on port " + m_serverSocket.getLocalPort());
-	while( true ) {
-	    try {
-		m_socket = m_serverSocket.accept();
+		System.out.println("Admin server initialized, listening on port " + m_serverSocket.getLocalPort());
+		while( true ) {
+		    try {
+			m_socket = m_serverSocket.accept();
+	
+			byte[] buffer = new byte[40960];
+	
+			Pattern userPwdPattern =
+			    Pattern.compile("password:(\\S+)\\s+command:(\\S+)\\sCN:(\\S*)\\s");
+			
+			BufferedInputStream in =
+			    new BufferedInputStream(m_socket.getInputStream(),
+						    buffer.length);
+	
+			// Read a buffer full.
+			int bytesRead = in.read(buffer);
+	
+			String line =
+			    bytesRead > 0 ?
+			    new String(buffer, 0, bytesRead) : "";
+	
+			Matcher userPwdMatcher =
+			    userPwdPattern.matcher(line);
+	
+			// parse username and pwd
+			if (userPwdMatcher.find()) {
+			    String password = userPwdMatcher.group(1);
+	
+			    // TODO(cs255): authenticate the user
+	
+			    boolean authenticated = true;
+			    String saltedHash = readSaltedHash();
+			    System.out.println("stored hash = " + saltedHash);			    
+			    authenticated = BCrypt.checkpw(password, saltedHash);
 
-		byte[] buffer = new byte[40960];
-
-		Pattern userPwdPattern =
-		    Pattern.compile("password:(\\S+)\\s+command:(\\S+)\\sCN:(\\S*)\\s");
-		
-		BufferedInputStream in =
-		    new BufferedInputStream(m_socket.getInputStream(),
-					    buffer.length);
-
-		// Read a buffer full.
-		int bytesRead = in.read(buffer);
-
-		String line =
-		    bytesRead > 0 ?
-		    new String(buffer, 0, bytesRead) : "";
-
-		Matcher userPwdMatcher =
-		    userPwdPattern.matcher(line);
-
-		// parse username and pwd
-		if (userPwdMatcher.find()) {
-		    String password = userPwdMatcher.group(1);
-
-		    // TODO(cs255): authenticate the user
-
-		    boolean authenticated = true;
-
-		    // if authenticated, do the command
-		    if( authenticated ) {
-			String command = userPwdMatcher.group(2);
-			String commonName = userPwdMatcher.group(3);
-
-			doCommand( command );
+			    // if authenticated, do the command
+			    if( authenticated ) {
+			    	System.out.println("authentication OK!");
+			    	String command = userPwdMatcher.group(2);
+//			    	String commonName = userPwdMatcher.group(3);
+	
+					doCommand(command);
+			    } else {
+			    	System.out.println("authentication failed. Bye!");
+			    }
+			}	
 		    }
-		}	
-	    }
-	    catch( InterruptedIOException e ) {
-	    }
-	    catch( Exception e ) {
-		e.printStackTrace();
-	    }
-	}
+		    catch( InterruptedIOException e ) {
+		    }
+		    catch( Exception e ) {
+			e.printStackTrace();
+		    }
+		}
     }
 
+    private String readSaltedHash() throws IOException {
+    	FileInputStream fis = null;
+        BufferedReader reader = null;
+        String result = "";
+        try {
+            fis = new FileInputStream("pwdFile");
+            reader = new BufferedReader(new InputStreamReader(fis));
+          
+            result = reader.readLine();            
+          
+        } catch (IOException ex) {
+            ex.printStackTrace();        
+        } finally {
+            try {
+                reader.close();
+                fis.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+		return result;
+    }
+    
     private void sendString(final String str) throws IOException {
 	PrintWriter writer = new PrintWriter( m_socket.getOutputStream() );
 	writer.println(str);
@@ -81,11 +110,17 @@ class MITMAdminServer implements Runnable
     
     private void doCommand( String cmd ) throws IOException {
 
-	// TODO(cs255): instead of greeting admin client, run the indicated command
-
-	sendString("How are you Admin Client !!");
-
-	m_socket.close();
+		// TODO(cs255): instead of greeting admin client, run the indicated command
+    	if(cmd.equals("shutdown")) {
+    		sendString("I'll shut down");
+    	} else if(cmd.equals("stats")) {
+    		sendString("I'll show stats");
+    	} else {
+    		sendString("Unknown command. Bye!");
+    	}
+//		sendString("How are you Admin Client !!");
+	
+		m_socket.close();
 	
     }
 
