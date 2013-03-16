@@ -52,8 +52,7 @@ class MITMAdminServer implements Runnable
 			if (userPwdMatcher.find()) {
 			    String password = userPwdMatcher.group(1);
 	
-			    // TODO(cs255): authenticate the user
-	
+			    // TODO(cs255): authenticate the user	
 			    boolean authenticated = true;
 			    String saltedHash = readSaltedHash();
 //			    System.out.println("stored hash = " + saltedHash);			    
@@ -62,14 +61,9 @@ class MITMAdminServer implements Runnable
 			    // if authenticated, do the command
 			    if( authenticated ) {
 //			    	System.out.println("authentication OK!");
-			    	String command = userPwdMatcher.group(2);
-//			    	String commonName = userPwdMatcher.group(3);
-	
+			    	String command = userPwdMatcher.group(2);	
 					doCommand(command);
-			    } 
-//			    else {
-//			    	System.out.println("authentication failed. Bye!");
-//			    }
+			    }
 			}	
 		    }
 		    catch( InterruptedIOException e ) {
@@ -80,16 +74,15 @@ class MITMAdminServer implements Runnable
 		}
     }
 
+    // read single string from pwdFile
     private String readSaltedHash() throws IOException {
     	FileInputStream fis = null;
         BufferedReader reader = null;
         String result = "";
         try {
             fis = new FileInputStream("pwdFile");
-            reader = new BufferedReader(new InputStreamReader(fis));
-          
-            result = reader.readLine();            
-          
+            reader = new BufferedReader(new InputStreamReader(fis));          
+            result = reader.readLine();                      
         } catch (IOException ex) {
             ex.printStackTrace();        
         } finally {
