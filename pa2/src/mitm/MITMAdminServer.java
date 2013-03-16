@@ -15,12 +15,14 @@ class MITMAdminServer implements Runnable
     private ServerSocket m_serverSocket;
     private Socket m_socket = null;
     private HTTPSProxyEngine m_engine;
+    private String m_pwdFile;
     
-    public MITMAdminServer( String localHost, int adminPort, HTTPSProxyEngine engine ) throws IOException,GeneralSecurityException {
+    public MITMAdminServer( String localHost, int adminPort, String pwdFile, HTTPSProxyEngine engine ) throws IOException,GeneralSecurityException {
     	MITMSSLSocketFactory socketFactory = new MITMSSLSocketFactory();
 				
 		m_serverSocket = socketFactory.createServerSocket( localHost, adminPort, 0 );
 		m_engine = engine;
+		m_pwdFile = pwdFile;
     }
 
     public void run() {
@@ -84,7 +86,7 @@ class MITMAdminServer implements Runnable
         BufferedReader reader = null;
         String result = "";
         try {
-            fis = new FileInputStream("pwdFile");
+            fis = new FileInputStream(m_pwdFile);
             reader = new BufferedReader(new InputStreamReader(fis));
           
             result = reader.readLine();            
