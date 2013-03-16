@@ -56,19 +56,20 @@ class MITMAdminServer implements Runnable
 	
 			    boolean authenticated = true;
 			    String saltedHash = readSaltedHash();
-			    System.out.println("stored hash = " + saltedHash);			    
+//			    System.out.println("stored hash = " + saltedHash);			    
 			    authenticated = BCrypt.checkpw(password, saltedHash);
 
 			    // if authenticated, do the command
 			    if( authenticated ) {
-			    	System.out.println("authentication OK!");
+//			    	System.out.println("authentication OK!");
 			    	String command = userPwdMatcher.group(2);
 //			    	String commonName = userPwdMatcher.group(3);
 	
 					doCommand(command);
-			    } else {
-			    	System.out.println("authentication failed. Bye!");
-			    }
+			    } 
+//			    else {
+//			    	System.out.println("authentication failed. Bye!");
+//			    }
 			}	
 		    }
 		    catch( InterruptedIOException e ) {
